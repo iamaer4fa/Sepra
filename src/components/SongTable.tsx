@@ -14,7 +14,8 @@ import {
   ChevronUp,
   ChevronDown,
   Mic2,
-  FolderPlus
+  FolderPlus,
+  RefreshCw
 } from 'lucide-react';
 import { Song, MusicProviderId } from '../types/music';
 import { formatTime } from '../utils/musicLinks';
@@ -34,6 +35,7 @@ interface SongRowProps {
   onMoveDown?: (index: number) => void;
   onRemoveFromPlaylist?: (songId: string) => void;
   onOpenLyrics: (song: Song) => void;
+  onOpenSourcePicker?: (song: Song) => void;
   canReorder?: boolean;
   isFirst?: boolean;
   isLast?: boolean;
@@ -55,6 +57,7 @@ export const SongRow: React.FC<SongRowProps> = ({
   onMoveDown,
   onRemoveFromPlaylist,
   onOpenLyrics,
+  onOpenSourcePicker,
   canReorder = false,
   isFirst = false,
   isLast = false,
@@ -315,6 +318,18 @@ export const SongRow: React.FC<SongRowProps> = ({
                   <Edit3 className="w-3.5 h-3.5 text-amber-400" />
                   <span>Edit Track Details</span>
                 </button>
+                {onOpenSourcePicker && (
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onOpenSourcePicker(song);
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-slate-800 flex items-center gap-2"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Alternative Sources...</span>
+                  </button>
+                )}
                 <button
                   onClick={handleCopyLink}
                   className="w-full px-3 py-2 text-left hover:bg-slate-800 flex items-center gap-2"
@@ -370,6 +385,7 @@ interface SongTableProps {
   onMoveDown?: (index: number) => void;
   onRemoveFromPlaylist?: (songId: string) => void;
   onOpenLyrics: (song: Song) => void;
+  onOpenSourcePicker?: (song: Song) => void;
   canReorder?: boolean;
   preferredProvider: MusicProviderId;
 }
@@ -388,6 +404,7 @@ export const SongTable: React.FC<SongTableProps> = ({
   onMoveDown,
   onRemoveFromPlaylist,
   onOpenLyrics,
+  onOpenSourcePicker,
   canReorder = false,
   preferredProvider,
 }) => {
@@ -418,6 +435,7 @@ export const SongTable: React.FC<SongTableProps> = ({
           onMoveDown={onMoveDown}
           onRemoveFromPlaylist={onRemoveFromPlaylist}
           onOpenLyrics={onOpenLyrics}
+          onOpenSourcePicker={onOpenSourcePicker}
           canReorder={canReorder}
           isFirst={idx === 0}
           isLast={idx === songs.length - 1}

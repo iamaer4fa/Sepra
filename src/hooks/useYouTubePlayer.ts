@@ -11,12 +11,14 @@ declare global {
 interface UseYouTubePlayerProps {
   currentSong: Song | null;
   onTrackEnded: () => void;
+  onSourceUnavailable?: (failedVideoId: string, errorCode: number) => void;
   repeatMode: RepeatMode;
 }
 
 export function useYouTubePlayer({
   currentSong,
   onTrackEnded,
+  onSourceUnavailable,
   repeatMode,
 }: UseYouTubePlayerProps) {
   const [isReady, setIsReady] = useState(false);
@@ -34,6 +36,9 @@ export function useYouTubePlayer({
   const isDraggingSeek = useRef(false);
   const repeatModeRef = useRef(repeatMode);
   repeatModeRef.current = repeatMode;
+
+  const onSourceUnavailableRef = useRef(onSourceUnavailable);
+  onSourceUnavailableRef.current = onSourceUnavailable;
 
   const currentSongRef = useRef(currentSong);
   currentSongRef.current = currentSong;
@@ -117,14 +122,20 @@ export function useYouTubePlayer({
             }
           },
           onError: (event: any) => {
-            console.warn('YouTube Player Event Error:', event.data);
+            const errorCode = event.data;
+            console.warn('YouTube Player Event Error:', errorCode);
             setIsBuffering(false);
-            if (event.data === 101 || event.data === 150) {
-              setPlayerError('Embedding is restricted by owner for this video. You can open direct links or select another video ID.');
-            } else if (event.data === 2) {
-              setPlayerError('Invalid video ID or parameter.');
+            if (errorCode === 101 || errorCode === 150) {
+              setPlayerError('Video embedding restricted. Auto-searching alternative source...');
+            } else if (errorCode === 100 || errorCode === 2) {
+              setPlayerError('Video no longer available. Auto-finding alternate source...');
             } else {
-              setPlayerError('Playback interrupted. Click play or use provider link.');
+              setPlayerError('Playback interrupted. Switching to alternative source...');
+            }
+
+            const currentVideoId = currentSongRef.current?.youtubeVideoId || '';
+            if (onSourceUnavailableRef.current && currentVideoId) {
+              onSourceUnavailableRef.current(currentVideoId, errorCode);
             }
           },
         },
@@ -278,6 +289,18 @@ export function useYouTubePlayer({
     }
   }, []);
 
+  const switchVideoSource = useCallback((newVideoId: string) => {
+    if (playerRef.current && typeof playerRef.current.loadVideoById === 'function') {
+      try {
+        playerRef.current.loadVideoById(newVideoId);
+        setIsPlaying(true);
+        setPlayerError(null);
+      } catch (e) {
+        console.warn('Failed to switch video source', e);
+      }
+    }
+  }, []);
+
   return {
     isReady,
     isPlaying,
@@ -298,6 +321,7 @@ export function useYouTubePlayer({
     setVolume,
     toggleMute,
     setPlaybackRate,
+    switchVideoSource,
     isDraggingSeek,
   };
 }

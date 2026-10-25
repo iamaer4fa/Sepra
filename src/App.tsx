@@ -17,6 +17,8 @@ import { QueueDrawer } from './components/QueueDrawer';
 import { LyricsDrawer } from './components/LyricsDrawer';
 import { PlaylistManagerModal } from './components/PlaylistManagerModal';
 import { AddToPlaylistModal } from './components/AddToPlaylistModal';
+import { SourcePickerModal } from './components/SourcePickerModal';
+import { findNextWorkingSource } from './utils/sourceResolver';
 
 const LOCAL_STORAGE_KEY = 'harmoniq_songs_v2';
 const LOCAL_STORAGE_PLAYLISTS_KEY = 'harmoniq_playlists_v2';
@@ -82,6 +84,7 @@ export default function App() {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [addSongModalOpen, setAddSongModalOpen] = useState(false);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [sourcePickerSong, setSourcePickerSong] = useState<Song | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -227,6 +230,48 @@ export default function App() {
     }
   }, [playlistSongs, currentSongId, repeatMode]);
 
+  // Auto-recovery handler when current video ID is unavailable, deleted, or blocks embedding
+  const handleSourceUnavailable = useCallback(
+    async (failedVideoId: string, errorCode: number) => {
+      if (!currentSong) return;
+
+      console.warn(
+        `[HarmoniQ Auto-Recovery] Source ${failedVideoId} unavailable for "${currentSong.title}" (code: ${errorCode}). Searching alternative source...`
+      );
+      showToast(`⚠️ Audio source unavailable. Auto-searching alternative source...`);
+
+      const updatedFailed = Array.from(
+        new Set([...(currentSong.failedSourceIds || []), failedVideoId])
+      );
+
+      const alt = await findNextWorkingSource(currentSong, failedVideoId);
+      if (alt && alt.videoId) {
+        console.log(
+          `[HarmoniQ Auto-Recovery] Found working alternative source: ${alt.videoId} (${alt.label})`
+        );
+
+        setSongs((prev) =>
+          prev.map((s) =>
+            s.id === currentSong.id
+              ? {
+                  ...s,
+                  youtubeVideoId: alt.videoId,
+                  failedSourceIds: updatedFailed,
+                }
+              : s
+          )
+        );
+
+        switchVideoSource(alt.videoId);
+        showToast(`🔄 Auto-switched to: ${alt.label}`);
+      } else {
+        showToast(`⚠️ No backup source found. Please select an alternate or use Spotify.`);
+        setSourcePickerSong(currentSong);
+      }
+    },
+    [currentSong, showToast]
+  );
+
   // YouTube Player Engine Hook
   const {
     isReady,
@@ -246,9 +291,11 @@ export default function App() {
     fastForward,
     setVolume,
     toggleMute,
+    switchVideoSource,
   } = useYouTubePlayer({
     currentSong,
     onTrackEnded: handleNext,
+    onSourceUnavailable: handleSourceUnavailable,
     repeatMode,
   });
 
@@ -519,6 +566,20 @@ export default function App() {
     [showToast]
   );
 
+  // Switch or update a song's playback source
+  const handleSelectSource = useCallback(
+    (songId: string, newVideoId: string) => {
+      setSongs((prev) =>
+        prev.map((s) => (s.id === songId ? { ...s, youtubeVideoId: newVideoId } : s))
+      );
+      if (currentSongId === songId) {
+        switchVideoSource(newVideoId);
+      }
+      showToast('Switched to selected playback source');
+    },
+    [currentSongId, switchVideoSource, showToast]
+  );
+
   // Delete song globally
   const handleDeleteSong = useCallback(
     (songId: string) => {
@@ -786,6 +847,7 @@ export default function App() {
             setCurrentSongId(song.id);
             setLyricsOpen(true);
           }}
+          onOpenSourcePicker={(song) => setSourcePickerSong(song)}
           canReorder={Boolean(currentPlaylist)}
           preferredProvider={preferredProvider}
         />
@@ -831,6 +893,7 @@ export default function App() {
         onToggleVideo={() => setVideoVisible(!videoVisible)}
         onToggleLyrics={() => setLyricsOpen(!lyricsOpen)}
         onOpenTheater={() => setTheaterOpen(true)}
+        onOpenSourcePicker={() => currentSong && setSourcePickerSong(currentSong)}
         onToggleQueue={() => setQueueOpen(!queueOpen)}
         onProviderChange={setPreferredProvider}
       />
@@ -933,6 +996,14 @@ export default function App() {
         song={editingSong}
         onSave={handleSaveEditedSong}
         sets={playlists.map((p) => ({ id: p.id, name: p.name }))}
+      />
+
+      {/* Playback Source Picker Modal (Auto-detection & Alternate Switcher) */}
+      <SourcePickerModal
+        isOpen={Boolean(sourcePickerSong)}
+        onClose={() => setSourcePickerSong(null)}
+        song={sourcePickerSong}
+        onSelectSource={handleSelectSource}
       />
     </div>
   );

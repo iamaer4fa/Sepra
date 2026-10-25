@@ -12,6 +12,12 @@ export interface SongLyrics {
   source?: string;
 }
 
+export interface MusicSource {
+  id: string; // video ID
+  label: string; // e.g. "Primary", "Alternate Audio", "Lyric Video"
+  isWorking?: boolean;
+}
+
 export interface Song {
   id: string;
   no: number;
@@ -30,6 +36,9 @@ export interface Song {
   lyricsSnippet?: string;
   fullLyrics?: string; // custom or preloaded full text
   notes?: string;
+  fallbackVideoIds?: string[];
+  sources?: MusicSource[];
+  failedSourceIds?: string[];
 }
 
 export interface Playlist {

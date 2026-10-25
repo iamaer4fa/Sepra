@@ -51,6 +51,7 @@ interface UnifiedPlayerProps {
   onToggleVideo: () => void;
   onToggleLyrics: () => void;
   onOpenTheater: () => void;
+  onOpenSourcePicker?: () => void;
   onToggleQueue: () => void;
   onProviderChange: (provider: MusicProviderId) => void;
 }
@@ -82,6 +83,7 @@ export const UnifiedPlayer: React.FC<UnifiedPlayerProps> = ({
   onToggleVideo,
   onToggleLyrics,
   onOpenTheater,
+  onOpenSourcePicker,
   onToggleQueue,
   onProviderChange,
 }) => {
@@ -184,6 +186,18 @@ export const UnifiedPlayer: React.FC<UnifiedPlayerProps> = ({
                 <Radio className="w-3 h-3 text-amber-400" />
                 <span>YT Music</span>
               </a>
+              {onOpenSourcePicker && (
+                <>
+                  <span aria-hidden="true" className="text-slate-600">·</span>
+                  <button
+                    onClick={onOpenSourcePicker}
+                    className="hover:text-cyan-400 flex items-center gap-0.5 text-cyan-500/90 font-medium"
+                    title="Change / Alternate Playback Source"
+                  >
+                    <span>Sources</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
