@@ -1,0 +1,6 @@
+{
+  "name": "HarmoniQ - Universal Playlist & Music Streamer",
+  "description": "Unified music playback interface connecting setlists and custom song collections to YouTube, Spotify, and YouTube Music with full playback controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
